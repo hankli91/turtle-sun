@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>燒烏龜祈晴</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: one full-screen landscape. Sun at center behind an overcast deck, layered ridges below, tortoise in the foreground, forecast card top. Single photographic sky look on purpose: the sky itself is the state. */
+:root {
+  --text: #f4f7fa;
+  --text-dim: rgba(244, 247, 250, 0.72);
+  --glass: rgba(14, 22, 30, 0.42);
+  --glass-line: rgba(255, 255, 255, 0.16);
+  --clear-top: #2d6db5;
+  --clear-mid: #6ea7dc;
+  --clear-bottom: #d3e5f2;
+  --gloom-top: #3b4249;
+  --gloom-mid: #69717a;
+  --gloom-bottom: #a2a8ad;
+  --cloud-light: #f2f4f6;
+  --cloud-shade: #a3abb4;
+  --cloud-dark: #59616a;
+  --deck: #4d545c;
+  --good: #fff4c8;
+  --font-display: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+  --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  color-scheme: light;
+}
+html, body { height: 100%; }
+body {
+  background: var(--gloom-bottom);
+  color: var(--text);
+  font-family: var(--font-body);
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+.defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.stage {
+  --clear: 0;
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background: linear-gradient(var(--clear-top), var(--clear-mid) 45%, var(--clear-bottom) 75%);
+  user-select: none;
+}
+.gloom {
+  position: absolute; inset: 0; z-index: 0;
+  background: linear-gradient(var(--gloom-top), var(--gloom-mid) 45%, var(--gloom-bottom) 75%);
+  opacity: calc(1 - var(--clear));
+  transition: opacity 1.4s ease;
+  will-change: opacity;
+}
+
+/* Sun: turbulent photosphere, limb darkening, corona */
+.sun-wrap {
+  position: absolute; z-index: 1;
+  left: 50%; top: 45%;
+  width: min(38vmin, 260px); aspect-ratio: 1; max-width: 100%;
+  translate: -50% -50%;
+}
+.corona {
+  position: absolute; inset: -60%; border-radius: 50%;
+  background: radial-gradient(closest-side,
+    rgba(255, 240, 200, 0.95) 44%,
+    rgba(255, 200, 120, 0.5) 52%,
+    rgba(255, 165, 80, 0.16) 70%,
+    rgba(255, 150, 70, 0) 100%);
+  opacity: calc(0.25 + 0.75 * var(--clear));
+  transition: opacity 1.4s ease;
+  animation: breathe 7s ease-in-out infinite;
+}
+@keyframes breathe { 50% { scale: 1.04; } }
+.sun {
+  position: absolute; inset: 0; border-radius: 50%; overflow: hidden;
+  box-shadow: 0 0 40px 8px rgba(255, 170, 60, 0.55);
+  filter: brightness(calc(0.6 + 0.4 * var(--clear))) saturate(calc(0.45 + 0.55 * var(--clear))) blur(calc((1 - var(--clear)) * 2.5px));
+  transition: filter 1.4s ease;
+  will-change: filter;
+}
+.surface {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  will-change: transform;
+  animation: spin 200s linear infinite;
+}
+.surface.s2 { mix-blend-mode: screen; opacity: 0.42; animation-duration: 130s; animation-direction: reverse; }
+@keyframes spin { to { rotate: 360deg; } }
+.limb {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(255, 250, 225, 0.5) 0%,
+    rgba(255, 240, 200, 0.12) 30%,
+    rgba(200, 70, 0, 0) 55%,
+    rgba(150, 35, 0, 0.35) 80%,
+    rgba(90, 15, 0, 0.78) 100%);
+}
+.flash {
+  position: absolute; inset: -35%; border-radius: 50%; opacity: 0; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(255, 255, 240, 1) 0 40%, rgba(255, 215, 140, 0.55) 62%, rgba(255, 200, 120, 0) 100%);
+}
+
+/* Overcast deck and cumulus clouds, in front of the sun; they part as the sky clears */
+.deck {
+  position: absolute; z-index: 2;
+  left: -25%; right: -25%; top: -14%; height: 66%;
+  background: radial-gradient(farthest-side at 50% 32%, var(--deck) 0 52%, rgba(77, 84, 92, 0.55) 76%, rgba(77, 84, 92, 0) 100%);
+  opacity: calc((1 - var(--clear)) * 0.86);
+  transition: opacity 1.6s ease;
+  will-change: opacity;
+}
+.cloud {
+  position: absolute; z-index: 2;
+  left: var(--x); top: var(--y);
+  width: var(--w); aspect-ratio: 2.6;
+  transform: translateX(calc(var(--dir) * var(--clear) * 85vw));
+  opacity: calc(1 - var(--clear) * 0.8);
+  transition: transform 1.8s cubic-bezier(.3,.7,.3,1), opacity 1.8s ease;
+  will-change: transform, opacity;
+}
+.drift { position: absolute; inset: 0; animation: drift var(--t, 40s) ease-in-out infinite alternate; }
+@keyframes drift { from { translate: -24px 0; } to { translate: 24px 0; } }
+.cl { position: absolute; border-radius: 50%; }
+.cl.back { inset: 26% -2% -8% 4%; background: radial-gradient(closest-side, var(--cloud-dark) 30%, rgba(89, 97, 106, 0)); opacity: 0.75; }
+.cl.mid { inset: 6% 4% 14% 0; background: radial-gradient(closest-side, var(--cloud-shade) 50%, rgba(163, 171, 180, 0)); }
+.cl.front { inset: 0 16% 30% 12%; background: radial-gradient(closest-side at 46% 44%, var(--cloud-light) 46%, rgba(242, 244, 246, 0)); }
+
+.land {
+  position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%;
+  pointer-events: none;
+  filter: brightness(calc(0.6 + 0.4 * var(--clear))) saturate(calc(0.6 + 0.4 * var(--clear)));
+  transition: filter 1.4s ease;
+  will-change: filter;
+}
+canvas { position: absolute; inset: 0; z-index: 4; width: 100%; height: 100%; pointer-events: none; }
+
+/* Tortoise */
+.turtle {
+  position: absolute; z-index: 6;
+  left: 50%; bottom: calc(6% + env(safe-area-inset-bottom, 0px));
+  width: min(36vmin, 200px);
+  translate: -50% 0;
+  padding: 4px; border: 0; border-radius: 12px;
+  background: none; cursor: pointer;
+  touch-action: manipulation;
+}
+.turtle svg { display: block; width: 100%; height: auto; transition: translate 0.2s ease, filter 0.2s ease; }
+.turtle:hover svg { translate: 0 -3px; filter: brightness(1.08); }
+.turtle:active svg { translate: 0 2px; }
+.turtle:focus-visible { outline: 2px solid var(--text); outline-offset: 4px; }
+
+.hint {
+  position: absolute; z-index: 6;
+  left: 50%; bottom: calc(6% + env(safe-area-inset-bottom, 0px) + min(36vmin, 200px) * 0.6 + 6px);
+  translate: -50% 0;
+  font-size: 14px; letter-spacing: 0.06em; color: var(--text);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  white-space: nowrap; pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+.hint.off { opacity: 0; }
+
+.flyer { position: fixed; left: 0; top: 0; z-index: 7; pointer-events: none; will-change: transform, filter; }
+
+.say {
+  position: fixed; z-index: 8; pointer-events: none;
+  translate: -50% -50%;
+  font-family: var(--font-display); font-weight: 700;
+  font-size: clamp(18px, 3.4vmin, 26px); letter-spacing: 0.08em;
+  color: var(--text);
+  text-shadow: 0 0 10px rgba(255, 120, 30, 0.9), 0 1px 3px rgba(80, 20, 0, 0.7);
+  white-space: nowrap;
+  animation: say 1.1s ease-out forwards;
+}
+.say.good {
+  font-size: clamp(22px, 4.4vmin, 34px);
+  color: var(--good);
+  text-shadow: 0 0 16px rgba(255, 200, 80, 0.95), 0 1px 3px rgba(80, 40, 0, 0.7);
+  animation-duration: 1.5s;
+}
+@keyframes say {
+  0% { opacity: 0; transform: translateY(8px); }
+  20% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-46px); }
+}
+
+/* Header + forecast card */
+.hud {
+  position: absolute; z-index: 5; left: 0; right: 0; top: 0;
+  padding-block: 20px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-wrap: wrap; gap: 12px 24px;
+  justify-content: space-between; align-items: flex-start;
+}
+.intro { min-width: 0; max-width: 30em; }
+h1 {
+  margin: 0;
+  font-family: var(--font-display); font-weight: 700;
+  font-size: clamp(26px, 4.6vw, 42px); line-height: 1.2; letter-spacing: 0.04em;
+  color: var(--text);
+  text-shadow: 0 2px 14px rgba(10, 16, 22, 0.45);
+  text-wrap: balance;
+}
+.intro p {
+  margin: 8px 0 0;
+  font-size: 15px; line-height: 1.65;
+  color: var(--text);
+  text-shadow: 0 1px 6px rgba(10, 16, 22, 0.55);
+}
+.forecast {
+  min-width: 0;
+  display: grid; gap: 3px;
+  padding: 12px 18px 12px;
+  border: 1px solid var(--glass-line);
+  border-radius: 12px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  font-variant-numeric: tabular-nums;
+}
+.forecast .label { font-size: 12px; letter-spacing: 0.16em; color: var(--text-dim); }
+.forecast .weather { font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1.3; }
+.forecast .meta { font-size: 14px; color: var(--text-dim); }
+.forecast .meta b { font-weight: 500; color: var(--text); }
+.controls { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 4px; }
+.reset {
+  padding: 2px 0; border: 0; background: none;
+  font: inherit; font-size: 13px; color: var(--text-dim);
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.reset:hover { color: var(--text); }
+.reset:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; border-radius: 4px; }
+
+@media (max-width: 520px) {
+  .sun-wrap { top: 50%; width: min(52vw, 230px); }
+  .forecast { padding: 10px 14px; }
+  .forecast .weather { font-size: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .surface, .corona, .drift { animation: none; }
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; }
+</style>
+</head>
+<body>
+
+<svg class="defs" aria-hidden="true" focusable="false">
+  <defs id="defs">
+    <!-- sun photosphere -->
+    <filter id="sun-a" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="5" seed="11" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="g"/>
+      <feComponentTransfer in="g" result="c">
+        <feFuncR type="table" tableValues="0.55 0.8 1 1 1"/>
+        <feFuncG type="table" tableValues="0.08 0.22 0.5 0.78 0.95"/>
+        <feFuncB type="table" tableValues="0 0 0.06 0.3 0.75"/>
+      </feComponentTransfer>
+      <feComposite in="c" in2="SourceAlpha" operator="in"/>
+    </filter>
+    <filter id="sun-b" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="turbulence" baseFrequency="0.09" numOctaves="3" seed="3" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 0.86  0 0 0 0 0.5  1.7 0 0 0 -0.35" result="c"/>
+      <feComposite in="c" in2="SourceAlpha" operator="in"/>
+    </filter>
+    <!-- fine grain for shell and ground -->
+    <filter id="t-grain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="5" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.08  0 0 0 0 0.05  0 0 0 0 0.02  0.9 0 0 0 -0.32" result="d"/>
+      <feComposite in="d" in2="SourceAlpha" operator="in" result="di"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="di"/></feMerge>
+    </filter>
+    <filter id="ground-grain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.45 0.9" numOctaves="2" seed="8" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.05  0 0 0 0 0.09  0 0 0 0 0.03  1 0 0 0 -0.36" result="d"/>
+      <feComposite in="d" in2="SourceAlpha" operator="in" result="di"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="di"/></feMerge>
+    </filter>
+    <filter id="deck-f" x="-20%" y="-30%" width="140%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.006" numOctaves="4" seed="21" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="220" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <!-- landscape -->
+    <linearGradient id="g-far" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fa3b5"/><stop offset="0.4" stop-color="#a9b8c5"/></linearGradient>
+    <linearGradient id="g-mid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#58744f"/><stop offset="0.35" stop-color="#7d917a"/></linearGradient>
+    <linearGradient id="g-near" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#587c3d"/><stop offset="0.35" stop-color="#3e5e2b"/><stop offset="1" stop-color="#1f3118"/></linearGradient>
+    <!-- tortoise -->
+    <linearGradient id="t-shell" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6e4c22"/><stop offset="0.55" stop-color="#553919"/><stop offset="1" stop-color="#2f1f0d"/></linearGradient>
+    <radialGradient id="t-spot"><stop offset="0" stop-color="#d6a457" stop-opacity="0.95"/><stop offset="0.55" stop-color="#a9793a" stop-opacity="0.6"/><stop offset="1" stop-color="#6b4a22" stop-opacity="0"/></radialGradient>
+    <radialGradient id="t-sheen" cx="0.36" cy="0.18" r="0.6"><stop offset="0" stop-color="#fff0d2" stop-opacity="0.4"/><stop offset="1" stop-color="#fff0d2" stop-opacity="0"/></radialGradient>
+    <linearGradient id="t-dark" x1="0" y1="0" x2="0" y2="1"><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.42"/></linearGradient>
+    <linearGradient id="t-skin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8e896c"/><stop offset="1" stop-color="#4b4733"/></linearGradient>
+    <linearGradient id="t-skin-far" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6a6650"/><stop offset="1" stop-color="#363325"/></linearGradient>
+    <radialGradient id="t-shadow"><stop offset="0" stop-color="#000" stop-opacity="0.5"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+    <pattern id="t-scales" width="5" height="4" patternUnits="userSpaceOnUse">
+      <path d="M0 4 A2.5 2.5 0 0 1 5 4 M-2.5 2 A2.5 2.5 0 0 1 2.5 2 M2.5 2 A2.5 2.5 0 0 1 7.5 2" stroke="rgba(28,24,14,0.42)" stroke-width="0.6" fill="none"/>
+    </pattern>
+    <pattern id="t-scales-lg" href="#t-scales" patternTransform="scale(1.7)"/>
+    <clipPath id="t-clip"><path id="t-clip-path"/></clipPath>
+  </defs>
+</svg>
+
+<main class="stage" id="stage">
+  <div class="gloom"></div>
+
+  <div class="sun-wrap" id="sun">
+    <div class="corona"></div>
+    <div class="sun" id="sun-disc">
+      <svg class="surface" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="100" fill="#fff" filter="url(#sun-a)"/></svg>
+      <svg class="surface s2" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="100" fill="#fff" filter="url(#sun-b)"/></svg>
+      <div class="limb"></div>
+    </div>
+    <div class="flash" id="flash"></div>
+  </div>
+
+  <div class="deck" style="filter:url(#deck-f)"></div>
+  <div id="clouds"></div>
+
+  <svg class="land" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
+    <path id="ridge-far" fill="url(#g-far)"/>
+    <path id="ridge-mid" fill="url(#g-mid)"/>
+    <path id="ridge-near" fill="url(#g-near)" filter="url(#ground-grain)"/>
+  </svg>
+
+  <canvas id="fx"></canvas>
+
+  <header class="hud">
+    <div class="intro">
+      <h1>燒烏龜，求好天氣</h1>
+      <p id="line">點下面的烏龜，把牠丟進太陽。每隻只有兩成機率讓天氣好轉，所以要狂點。</p>
+    </div>
+    <section class="forecast" aria-live="polite">
+      <span class="label">今日天氣</span>
+      <span class="weather" id="weather">大雨</span>
+      <span class="meta">降雨機率 <b id="pop">90%</b>・已燒 <b id="count">0</b> 隻</span>
+      <div class="controls">
+        <button class="reset" id="sound" type="button" aria-pressed="true">音效：開</button>
+        <button class="reset" id="reset" type="button">讓天氣變回大雨</button>
+      </div>
+    </section>
+  </header>
+
+  <div class="hint" id="hint">狂點烏龜</div>
+  <button class="turtle" id="turtle" type="button" aria-label="把烏龜丟進太陽"></button>
+</main>
+
+<script>
+(() => {
+  const stage = document.getElementById('stage');
+  const sunWrap = document.getElementById('sun');
+  const sunDisc = document.getElementById('sun-disc');
+  const flash = document.getElementById('flash');
+  const turtleBtn = document.getElementById('turtle');
+  const hint = document.getElementById('hint');
+  const elWeather = document.getElementById('weather');
+  const elPop = document.getElementById('pop');
+  const elCount = document.getElementById('count');
+  const elLine = document.getElementById('line');
+  const canvas = document.getElementById('fx');
+  const ctx = canvas.getContext('2d');
+  const defs = document.getElementById('defs');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const FULL = 12;            // lucky throws needed for a fully clear sky
+  const LUCK = 0.2;           // chance that one turtle improves the weather
+  let count = 0;              // turtles burned
+  let luck = 0;               // throws that actually improved the weather
+  let clearTarget = 0, clearShown = 0;
+  let lastSay = 0;
+
+  // ---------- tortoise ----------
+  const DOME = 'M26 88 C24 52 60 20 101 18 C142 20 178 52 176 88';
+  let scallop = '';
+  for (let i = 11; i >= 0; i--) {
+    const x0 = 26 + 12.5 * (i + 1), x1 = 26 + 12.5 * i;
+    scallop += ` Q${(x0 + x1) / 2} 93 ${x1} 88`;
+  }
+  const SHELL = DOME + scallop + ' Z';
+  document.getElementById('t-clip-path').setAttribute('d', SHELL);
+
+  function turtleSVG() {
+    const spots = [
+      [101, 28, 15, 8], [70, 32, 12, 7], [132, 32, 12, 7], [50, 47, 7, 5], [152, 47, 7, 5],
+      [42, 66, 13, 8], [83, 56, 15, 10], [119, 56, 15, 10], [160, 66, 13, 8]
+    ];
+    for (let i = 0; i < 12; i++) spots.push([32.25 + 12.5 * i, 82, 4.6, 3.6]);
+    const spotEls = spots.map(([cx, cy, rx, ry]) =>
+      `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#t-spot)"/>` +
+      (rx > 6 ? `<ellipse cx="${cx}" cy="${cy}" rx="${(rx * 0.55).toFixed(1)}" ry="${(ry * 0.55).toFixed(1)}" fill="none" stroke="rgba(40,24,8,0.32)" stroke-width="0.7"/>
+                 <ellipse cx="${cx}" cy="${cy}" rx="${(rx * 0.95).toFixed(1)}" ry="${(ry * 0.95).toFixed(1)}" fill="none" stroke="rgba(40,24,8,0.26)" stroke-width="0.7"/>` : '')
+    ).join('');
+    let marg = '';
+    for (let i = 1; i < 12; i++) {
+      const x = 26 + 12.5 * i;
+      marg += `M${(x + (101 - x) * 0.05).toFixed(1)} 70 L${x} 94 `;
+    }
+    const seams =
+      'M34 60 C50 42 76 37 101 37 C126 37 152 42 168 60 ' +
+      'M22 77 C60 71 142 71 180 77 ' +
+      'M60 44 L57 26 M84 38 L83 14 M118 38 L119 14 M142 44 L145 26 ' +
+      'M72 41 L66 74 M101 37 L101 72 M130 41 L136 74 ' + marg;
+
+    const claws = (xs, y) => xs.map(x => `M${x} ${y - 1} q0.6 3.6 3.4 3.4 q-1.2 -1.6 -1.2 -3.4 z`).join(' ');
+    const legNearF = 'M136 80 C136 92 132 100 128 107 C126 111 129 113 133 113 L149 113 C153 113 154 110 152 106 C149 99 150 90 152 80 Z';
+    const legNearB = 'M50 80 C48 92 46 102 46 108 C46 112 49 113 52 113 L66 113 C69 113 70 110 69 107 C68 100 70 90 72 80 Z';
+    const legFarF = 'M152 78 C156 90 158 100 160 107 C161 110 163 111 166 111 L173 111 C176 111 177 109 176 106 C172 98 168 88 164 78 Z';
+    const legFarB = 'M76 80 C76 92 77 101 77 107 C77 110 79 111 82 111 L89 111 C91 111 92 109 91 107 C89 100 89 90 89 80 Z';
+    const neck = 'M158 86 C163 72 170 62 180 56 C186 52 194 48 201 50 C207 52 210 57 209 62 C208 67 203 70 197 71 C191 72 187 73 183 77 C178 82 174 88 171 94 Z';
+    const tail = 'M30 84 C24 86 19 88 16 91 C21 92 26 91 32 89 Z';
+    const edge = 'stroke="rgba(22,16,8,0.55)" stroke-width="0.8"';
+
+    return `<svg viewBox="0 0 214 122" aria-hidden="true">
+      <g class="t-shadow"><ellipse cx="104" cy="114" rx="88" ry="6" fill="url(#t-shadow)"/></g>
+      <path d="${legFarF}" fill="url(#t-skin-far)" ${edge}/>
+      <path d="${legFarB}" fill="url(#t-skin-far)" ${edge}/>
+      <path d="${claws([161, 166, 170], 111)} ${claws([78, 82, 86], 111)}" fill="#241d12"/>
+      <path d="${tail}" fill="url(#t-skin)" ${edge}/>
+      <path d="${neck}" fill="url(#t-skin)" ${edge}/>
+      <path d="${neck}" fill="url(#t-scales)"/>
+      <path d="M176 66 C178 70 178 74 176 78 M182 62 C184 66 184 70 182 73 M171 72 C173 76 172 80 170 84" stroke="rgba(28,22,12,0.4)" stroke-width="0.8" fill="none"/>
+      <path d="M208.5 63 C203 65.5 197 66.5 191.5 65.5" stroke="rgba(28,22,12,0.75)" stroke-width="0.9" fill="none" stroke-linecap="round"/>
+      <circle cx="206" cy="56.5" r="0.7" fill="#1a140c"/>
+      <ellipse cx="196" cy="57" rx="2.8" ry="2.5" fill="#140d07"/>
+      <circle cx="197" cy="56" r="0.8" fill="rgba(255,255,255,0.85)"/>
+      <path d="M192.4 55.6 Q196 52.6 199.7 55.3" stroke="rgba(28,22,12,0.6)" stroke-width="0.8" fill="none"/>
+      <path d="${legNearB}" fill="url(#t-skin)" ${edge}/>
+      <path d="${legNearB}" fill="url(#t-scales-lg)"/>
+      <path d="${legNearF}" fill="url(#t-skin)" ${edge}/>
+      <path d="${legNearF}" fill="url(#t-scales-lg)"/>
+      <path d="${claws([129, 134, 139, 144], 113)} ${claws([47, 52, 57, 62], 113)}" fill="#241d12"/>
+      <g filter="url(#t-grain)">
+        <path d="${SHELL}" fill="url(#t-shell)"/>
+        <g clip-path="url(#t-clip)">
+          ${spotEls}
+          <path d="${seams}" stroke="#20140a" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
+          <path d="${SHELL}" fill="url(#t-sheen)"/>
+          <path d="${SHELL}" fill="url(#t-dark)"/>
+        </g>
+        <path d="${DOME}" stroke="rgba(255,222,170,0.22)" stroke-width="1.2" fill="none"/>
+        <path d="${SHELL}" stroke="#1b1006" stroke-width="1" fill="none"/>
+      </g>
+    </svg>`;
+  }
+  turtleBtn.innerHTML = turtleSVG();
+
+  // ---------- landscape ----------
+  function ridge(base, amp, waves) {
+    let d = 'M0 1000 L0 ';
+    for (let x = 0; x <= 1000; x += 8) {
+      let y = base;
+      for (const [f, w, p] of waves) y += Math.sin(x * f + p) * w * amp;
+      d += (x ? ' L' + x + ' ' : '') + y.toFixed(1);
+    }
+    return d + ' L1000 1000 Z';
+  }
+  document.getElementById('ridge-far').setAttribute('d', ridge(690, 40, [[0.0045, 1, 0.3], [0.012, 0.5, 1.7], [0.031, 0.22, 4.1], [0.07, 0.08, 2.2]]));
+  document.getElementById('ridge-mid').setAttribute('d', ridge(772, 26, [[0.0035, 1, 2.4], [0.010, 0.45, 0.6], [0.026, 0.18, 3.3], [0.06, 0.06, 1.1]]));
+  document.getElementById('ridge-near').setAttribute('d', ridge(852, 14, [[0.003, 1, 5.1], [0.009, 0.4, 1.2], [0.03, 0.12, 0.4]]));
+
+  // ---------- clouds ----------
+  const CLOUDS = [
+    ['-8%', '11%', 'min(400px, 82vw)', -1, 46],
+    ['56%', '7%', 'min(440px, 86vw)', 1, 52],
+    ['16%', '29%', 'min(330px, 70vw)', -1, 38],
+    ['60%', '33%', 'min(370px, 76vw)', 1, 44],
+    ['-6%', '47%', 'min(310px, 66vw)', -1, 50],
+    ['63%', '53%', 'min(300px, 64vw)', 1, 42]
+  ];
+  const LAYERS = [['back', 0.012, 120], ['mid', 0.014, 100], ['front', 0.018, 70]];
+  let filterDefs = '', cloudHTML = '';
+  CLOUDS.forEach(([x, y, w, dir, t], i) => {
+    let layers = '';
+    LAYERS.forEach(([name, bf, sc], k) => {
+      const id = `cf${i}${k}`;
+      filterDefs += `<filter id="${id}" x="-40%" y="-40%" width="180%" height="180%">
+        <feTurbulence type="fractalNoise" baseFrequency="${bf}" numOctaves="4" seed="${i * 7 + k * 3 + 1}" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="${sc}" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>`;
+      layers += `<div class="cl ${name}" style="filter:url(#${id})"></div>`;
+    });
+    cloudHTML += `<div class="cloud" style="--x:${x};--y:${y};--w:${w};--dir:${dir};--t:${t}s"><div class="drift">${layers}</div></div>`;
+  });
+  defs.insertAdjacentHTML('beforeend', filterDefs);
+  document.getElementById('clouds').outerHTML = cloudHTML;
+
+  // ---------- state ----------
+  const SAYS = ['滋——', '滋滋', '嗶啵', '焦了', '好燙'];
+  const INTRO = '點下面的烏龜，把牠丟進太陽。每隻只有兩成機率讓天氣好轉，所以要狂點。';
+  function weatherFor(l) {
+    if (l >= 18) return '大晴天，曬到發燙';
+    if (l >= FULL) return '大晴天';
+    if (l >= 9) return '晴時多雲';
+    if (l >= 6) return '多雲';
+    if (l >= 3) return '陰天';
+    if (l >= 1) return '小雨';
+    return '大雨';
+  }
+  function lineFor(c, l) {
+    if (l >= 24) return '太陽吃飽了。烏龜們辛苦了，明天出門記得擦防曬。';
+    if (l >= 18) return '夠了夠了，再燒下去要中暑了。';
+    if (l >= FULL) return `祈晴成功，燒了 ${c} 隻才放晴。明天會是好天氣。`;
+    if (c >= 10 && l === 0) return '老天爺還沒收到，繼續燒。';
+    if (l >= 3) return '雲開始散了，繼續狂點。';
+    return INTRO;
+  }
+  function update() {
+    clearTarget = Math.min(luck / FULL, 1);
+    stage.style.setProperty('--clear', clearTarget.toFixed(3));
+    elWeather.textContent = weatherFor(luck);
+    elPop.textContent = Math.round((90 - clearTarget * 80) / 10) * 10 + '%';
+    elCount.textContent = count;
+    elLine.textContent = lineFor(count, luck);
+    hint.classList.toggle('off', count >= 3);
+  }
+
+  function sunCenter() {
+    const r = sunWrap.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2 };
+  }
+
+  // ---------- sound (synthesized, starts on first click) ----------
+  const soundBtn = document.getElementById('sound');
+  let muted = false;
+  try { muted = localStorage.getItem('turtle-sun-muted') === '1'; } catch (e) {}
+  let ac = null, master = null, noiseBuf = null, rainGain = null, rainLevel = -1;
+
+  function audio() {
+    if (!ac) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ac = new AC();
+      const comp = ac.createDynamicsCompressor();
+      comp.threshold.value = -16; comp.ratio.value = 6;
+      master = ac.createGain();
+      master.gain.value = muted ? 0 : 0.85;
+      master.connect(comp); comp.connect(ac.destination);
+      noiseBuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      // rain bed, level follows the cloud cover
+      const rain = ac.createBufferSource();
+      rain.buffer = noiseBuf; rain.loop = true;
+      const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1100;
+      const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 6500;
+      rainGain = ac.createGain(); rainGain.gain.value = 0;
+      rain.connect(hp); hp.connect(lp); lp.connect(rainGain); rainGain.connect(master);
+      rain.start();
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+
+  function noiseThrough(filterType, freq, q, t, dur, peak, attack) {
+    const src = ac.createBufferSource(); src.buffer = noiseBuf;
+    const f = ac.createBiquadFilter(); f.type = filterType; f.frequency.value = freq; f.Q.value = q;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(master);
+    src.start(t, Math.random() * 1.5, dur + 0.05);
+    return f;
+  }
+
+  function sWhoosh(dur) {
+    if (!audio()) return;
+    const t = ac.currentTime;
+    const f = noiseThrough('bandpass', 300, 1.3, t, dur, 0.45, dur * 0.45);
+    f.frequency.setValueAtTime(260, t);
+    f.frequency.exponentialRampToValueAtTime(2200, t + dur * 0.55);
+    f.frequency.exponentialRampToValueAtTime(800, t + dur);
+  }
+
+  function sBurn() {
+    if (!audio()) return;
+    const t = ac.currentTime;
+    // low thump
+    const o = ac.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(130, t);
+    o.frequency.exponentialRampToValueAtTime(38, t + 0.3);
+    const og = ac.createGain();
+    og.gain.setValueAtTime(0.7, t);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+    o.connect(og); og.connect(master);
+    o.start(t); o.stop(t + 0.4);
+    // fireball whoomp
+    noiseThrough('lowpass', 700, 0.7, t, 0.6, 0.55, 0.02);
+    // sizzle
+    noiseThrough('highpass', 3200, 0.5, t + 0.05, 1.1, 0.16, 0.08);
+    // crackles
+    for (let i = 0; i < 7; i++) {
+      noiseThrough('bandpass', 1800 + Math.random() * 3500, 2, t + 0.08 + Math.random() * 0.8, 0.03, 0.15 + Math.random() * 0.35, 0.002);
+    }
+  }
+
+  function sChime() {
+    if (!audio()) return;
+    const t = ac.currentTime + 0.15;
+    [784, 988, 1175, 1568].forEach((hz, i) => {
+      const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = hz;
+      const g = ac.createGain();
+      const s = t + i * 0.13;
+      g.gain.setValueAtTime(0.0001, s);
+      g.gain.exponentialRampToValueAtTime(0.18, s + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, s + 1.6);
+      o.connect(g); g.connect(master);
+      o.start(s); o.stop(s + 1.7);
+    });
+  }
+
+  function sLucky() {
+    if (!audio()) return;
+    const t = ac.currentTime + 0.08;
+    [1175, 1760].forEach((hz, i) => {
+      const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = hz;
+      const g = ac.createGain();
+      const s = t + i * 0.09;
+      g.gain.setValueAtTime(0.0001, s);
+      g.gain.exponentialRampToValueAtTime(0.16, s + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, s + 0.6);
+      o.connect(g); g.connect(master);
+      o.start(s); o.stop(s + 0.7);
+    });
+  }
+
+  function setRain(gloom) {
+    if (!rainGain) return;
+    const level = Math.round(Math.pow(gloom, 1.3) * 100) / 100;
+    if (level === rainLevel) return;
+    rainLevel = level;
+    rainGain.gain.setTargetAtTime(level * 0.14, ac.currentTime, 0.4);
+  }
+
+  function renderSound() {
+    soundBtn.textContent = muted ? '音效：關' : '音效：開';
+    soundBtn.setAttribute('aria-pressed', String(!muted));
+    if (master) master.gain.setTargetAtTime(muted ? 0 : 0.85, ac.currentTime, 0.05);
+  }
+  soundBtn.addEventListener('click', () => {
+    muted = !muted;
+    try { localStorage.setItem('turtle-sun-muted', muted ? '1' : '0'); } catch (e) {}
+    audio();
+    renderSound();
+  });
+  renderSound();
+
+  // ---------- throwing ----------
+  function throwTurtle() {
+    const src = turtleBtn.querySelector('svg');
+    const box = src.getBoundingClientRect();
+    const w = box.width, h = box.height;
+    const flyer = src.cloneNode(true);
+    flyer.querySelector('.t-shadow').remove();
+    flyer.classList.add('flyer');
+    flyer.style.width = w + 'px';
+    flyer.style.height = h + 'px';
+    document.body.appendChild(flyer);
+
+    // a fresh tortoise takes its place
+    if (!reduced) src.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'ease-out' });
+
+    const x0 = box.left + w / 2, y0 = box.top + h / 2;
+    const dur = reduced ? 300 : 760 + Math.random() * 160;
+    const arc = reduced ? 0 : Math.min(innerHeight * 0.16, 130) * (0.7 + Math.random() * 0.6);
+    const spin = reduced ? 0 : (Math.random() < 0.5 ? -1 : 1) * (300 + Math.random() * 260);
+    const ox = (Math.random() - 0.5) * 0.6, oy = (Math.random() - 0.5) * 0.6;
+    sWhoosh(dur / 1000);
+    const t0 = performance.now();
+
+    function step(now) {
+      const t = Math.min((now - t0) / dur, 1);
+      const s = sunCenter();
+      const tx = s.x + ox * s.r, ty = s.y + oy * s.r;
+      const e = t * t * (3 - 2 * t);
+      const x = x0 + (tx - x0) * e;
+      const y = y0 + (ty - y0) * e - arc * 4 * t * (1 - t);
+      const scale = 1 - 0.68 * e;
+      const char = Math.max(0, (t - 0.6) / 0.4);
+      flyer.style.transform = `translate(${x - w / 2}px, ${y - h / 2}px) rotate(${spin * e}deg) scale(${scale})`;
+      flyer.style.filter = `brightness(${1 - 0.8 * char}) sepia(${0.6 * char}) saturate(${1 + char})`;
+      if (t < 1) requestAnimationFrame(step);
+      else { flyer.remove(); impact(tx, ty, s.r); }
+    }
+    requestAnimationFrame(step);
+  }
+
+  function impact(x, y, r) {
+    count++;
+    const lucky = Math.random() < LUCK;
+    if (lucky) luck++;
+    update();
+    sBurn();
+    if (lucky) { if (luck === FULL) sChime(); else sLucky(); }
+    if (!reduced) {
+      flash.animate([{ opacity: 0 }, { opacity: lucky ? 1 : 0.7, offset: 0.2 }, { opacity: 0 }], { duration: lucky ? 700 : 480, easing: 'ease-out' });
+      sunDisc.animate([{ scale: 1 }, { scale: lucky ? 1.08 : 1.04 }, { scale: 1 }], { duration: 420, easing: 'ease-out' });
+    }
+    burst(x, y, r);
+    const now = performance.now();
+    if (lucky || now - lastSay > 320) { lastSay = now; say(x, sunCenter().y - r * 1.12, lucky); }
+  }
+
+  function say(x, y, lucky) {
+    const el = document.createElement('div');
+    el.className = lucky ? 'say good' : 'say';
+    el.textContent = lucky ? (luck === FULL ? '放晴了' : '天氣好轉') : SAYS[Math.floor(Math.random() * SAYS.length)];
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.addEventListener('animationend', () => el.remove());
+    document.body.appendChild(el);
+  }
+
+  // ---------- canvas: rain + fire ----------
+  let W = 0, H = 0;
+  function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    W = stage.clientWidth; H = stage.clientHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  addEventListener('resize', resize);
+  resize();
+
+  const MAX_DROPS = 220;
+  const drops = Array.from({ length: MAX_DROPS }, () => ({
+    x: Math.random() * 1.2 - 0.1, y: Math.random(),
+    len: 12 + Math.random() * 18, v: 1.1 + Math.random() * 0.8, a: 0.25 + Math.random() * 0.35
+  }));
+  const parts = [];
+
+  function burst(x, y, r) {
+    const n = reduced ? 12 : parts.length > 900 ? 18 : 46;
+    parts.push({ type: 'ring', x, y, r: r * 0.6, life: 0.7, max: 0.7 });
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 1.2 + Math.random() * 4.2;
+      const roll = Math.random();
+      const type = roll < 0.6 ? 'flame' : roll < 0.78 ? 'smoke' : 'spark';
+      const life = type === 'smoke' ? 1.5 + Math.random() * 0.9 : type === 'spark' ? 0.8 + Math.random() * 0.7 : 0.5 + Math.random() * 0.5;
+      const slow = type === 'smoke' ? 0.35 : 1;
+      parts.push({
+        type, life, max: life,
+        x: x + Math.cos(a) * r * 0.2, y: y + Math.sin(a) * r * 0.2,
+        vx: Math.cos(a) * sp * slow, vy: Math.sin(a) * sp * slow - 0.8,
+        size: type === 'flame' ? 6 + Math.random() * 12 : type === 'smoke' ? 8 + Math.random() * 10 : 1 + Math.random() * 1.6,
+        hue: 16 + Math.random() * 30
+      });
+    }
+  }
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
+    const k = dt * 60;
+    clearShown += (clearTarget - clearShown) * Math.min(1, dt * 1.5);
+    ctx.clearRect(0, 0, W, H);
+
+    const gloom = 1 - clearShown;
+    setRain(gloom);
+    const n = Math.round(MAX_DROPS * Math.pow(gloom, 1.3));
+    if (n > 0) {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.lineWidth = 1;
+      ctx.lineCap = 'round';
+      for (let i = 0; i < n; i++) {
+        const d = drops[i];
+        if (!reduced) {
+          d.y += d.v * dt * (1 + gloom * 0.6);
+          d.x -= d.v * dt * 0.1;
+          if (d.y > 1.05) { d.y = -0.05; d.x = Math.random() * 1.2 - 0.1; }
+        }
+        const px = d.x * W, py = d.y * H;
+        ctx.strokeStyle = `rgba(220, 228, 236, ${d.a * (0.5 + 0.5 * gloom)})`;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px - d.len * 0.18, py + d.len);
+        ctx.stroke();
+      }
+    }
+
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i];
+      p.life -= dt;
+      if (p.life <= 0) { parts.splice(i, 1); continue; }
+      const f = p.life / p.max;
+      if (p.type === 'ring') {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = `rgba(255, 214, 140, ${f * 0.6})`;
+        ctx.lineWidth = 4 * f + 0.5;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * (1 + (1 - f) * 1.4), 0, Math.PI * 2);
+        ctx.stroke();
+        continue;
+      }
+      p.x += p.vx * k; p.y += p.vy * k;
+      p.vx *= Math.pow(0.965, k);
+      p.vy = p.vy * Math.pow(0.965, k) + (p.type === 'spark' ? 0.04 : -0.045) * k;
+      ctx.beginPath();
+      if (p.type === 'flame') {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = `hsla(${p.hue - (1 - f) * 12}, 100%, ${48 + f * 18}%, ${f * 0.7})`;
+        ctx.arc(p.x, p.y, p.size * (0.35 + f * 0.65), 0, Math.PI * 2);
+      } else if (p.type === 'smoke') {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = `rgba(48, 42, 38, ${f * 0.3})`;
+        ctx.arc(p.x, p.y, p.size * (1 + (1 - f) * 2.4), 0, Math.PI * 2);
+      } else {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = `rgba(255, 236, 170, ${f})`;
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  turtleBtn.addEventListener('click', throwTurtle);
+  document.getElementById('reset').addEventListener('click', () => { audio(); count = 0; luck = 0; update(); });
+
+  function start(data) {
+    count = (data && data.count) | 0;
+    luck = (data && data.luck) | 0;
+    clearShown = Math.min(luck / FULL, 1);
+    update();
+  }
+  const hot = window.claude && window.claude.hot;
+  if (hot && hot.snapshot) hot.snapshot(() => ({ count, luck }));
+  if (hot && hot.ready) hot.ready(start); else start(hot && hot.data ? hot.data : {});
+})();
+</script>
+</body>
+</html>
