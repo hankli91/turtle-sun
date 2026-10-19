@@ -234,9 +234,24 @@ h1 {
 .reset:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; border-radius: 4px; }
 
 @media (max-width: 520px) {
-  .sun-wrap { top: 50%; width: min(52vw, 230px); }
-  .forecast { padding: 10px 14px; }
-  .forecast .weather { font-size: 22px; }
+  .hud { padding-block: 12px; gap: 8px; }
+  h1 { font-size: 21px; }
+  .intro p { display: none; }
+  .intro p.status { display: block; font-size: 13px; margin-top: 2px; }
+  .sun-wrap { top: 50%; width: min(50vw, 220px); }
+  .forecast {
+    width: 100%;
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    gap: 2px 12px;
+    padding: 7px 12px;
+    border-radius: 10px;
+  }
+  .forecast .label { display: none; }
+  .forecast .weather { font-size: 18px; }
+  .forecast .meta { font-size: 13px; }
+  .forecast .controls { margin: 0 0 0 auto; gap: 12px; }
+  .reset { font-size: 12px; }
+  .hint { font-size: 13px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .surface, .corona, .drift { animation: none; }
@@ -337,12 +352,12 @@ body { margin: 0; }
       <span class="meta">降雨機率 <b id="pop">90%</b>・已燒 <b id="count">0</b> 隻</span>
       <div class="controls">
         <button class="reset" id="sound" type="button" aria-pressed="true">音效：開</button>
-        <button class="reset" id="reset" type="button">讓天氣變回大雨</button>
+        <button class="reset" id="reset" type="button">重新開始</button>
       </div>
     </section>
   </header>
 
-  <div class="hint" id="hint">狂點烏龜</div>
+  <div class="hint" id="hint">狂點烏龜，每隻兩成機率讓天氣好轉</div>
   <button class="turtle" id="turtle" type="button" aria-label="把烏龜丟進太陽"></button>
 </main>
 
@@ -511,7 +526,9 @@ body { margin: 0; }
     elWeather.textContent = weatherFor(luck);
     elPop.textContent = Math.round((90 - clearTarget * 80) / 10) * 10 + '%';
     elCount.textContent = count;
-    elLine.textContent = lineFor(count, luck);
+    const line = lineFor(count, luck);
+    elLine.textContent = line;
+    elLine.classList.toggle('status', line !== INTRO);
     hint.classList.toggle('off', count >= 3);
   }
 
