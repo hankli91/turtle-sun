@@ -26,6 +26,9 @@
   --cloud-dark: #59616a;
   --deck: #4d545c;
   --good: #fff4c8;
+  --bad: #dde7f2;
+  --bolt: #e8eeff;
+  --warn-bg: rgba(110, 24, 14, 0.62);
   --font-display: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
   --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
   color-scheme: light;
@@ -135,6 +138,7 @@ body {
   will-change: filter;
 }
 canvas { position: absolute; inset: 0; z-index: 4; width: 100%; height: 100%; pointer-events: none; }
+.lightning { position: absolute; inset: 0; z-index: 4; background: var(--bolt); opacity: 0; pointer-events: none; }
 
 /* Tortoise */
 .turtle {
@@ -161,6 +165,7 @@ canvas { position: absolute; inset: 0; z-index: 4; width: 100%; height: 100%; po
   transition: opacity 0.6s ease;
 }
 .hint.off { opacity: 0; }
+.hint.warn { padding: 3px 10px; border-radius: 999px; background: var(--warn-bg); text-shadow: none; }
 
 .flyer { position: fixed; left: 0; top: 0; z-index: 7; pointer-events: none; will-change: transform, filter; }
 
@@ -178,6 +183,12 @@ canvas { position: absolute; inset: 0; z-index: 4; width: 100%; height: 100%; po
   font-size: clamp(22px, 4.4vmin, 34px);
   color: var(--good);
   text-shadow: 0 0 16px rgba(255, 200, 80, 0.95), 0 1px 3px rgba(80, 40, 0, 0.7);
+  animation-duration: 1.5s;
+}
+.say.bad {
+  font-size: clamp(22px, 4.4vmin, 34px);
+  color: var(--bad);
+  text-shadow: 0 0 14px rgba(110, 140, 190, 0.95), 0 1px 3px rgba(10, 20, 40, 0.8);
   animation-duration: 1.5s;
 }
 @keyframes say {
@@ -313,6 +324,11 @@ body { margin: 0; }
       <path d="M0 4 A2.5 2.5 0 0 1 5 4 M-2.5 2 A2.5 2.5 0 0 1 2.5 2 M2.5 2 A2.5 2.5 0 0 1 7.5 2" stroke="rgba(28,24,14,0.42)" stroke-width="0.6" fill="none"/>
     </pattern>
     <pattern id="t-scales-lg" href="#t-scales" patternTransform="scale(1.7)"/>
+    <!-- rabbit -->
+    <linearGradient id="r-fur" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fdfcf9"/><stop offset="1" stop-color="#ddd7cc"/></linearGradient>
+    <linearGradient id="r-fur-far" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e4dfd6"/><stop offset="1" stop-color="#c4bdb1"/></linearGradient>
+    <linearGradient id="r-shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0.4" stop-color="#6e6455" stop-opacity="0"/><stop offset="1" stop-color="#6e6455" stop-opacity="0.32"/></linearGradient>
+    <linearGradient id="r-ear-in" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eab7ae"/><stop offset="1" stop-color="#cc8b82"/></linearGradient>
     <clipPath id="t-clip"><path id="t-clip-path"/></clipPath>
   </defs>
 </svg>
@@ -340,16 +356,17 @@ body { margin: 0; }
   </svg>
 
   <canvas id="fx"></canvas>
+  <div class="lightning" id="lightning"></div>
 
   <header class="hud">
     <div class="intro">
       <h1>燒烏龜，求好天氣</h1>
-      <p id="line">點下面的烏龜，把牠丟進太陽。每隻只有兩成機率讓天氣好轉，所以要狂點。</p>
+      <p id="line">點下面的烏龜，把牠丟進太陽。每隻只有兩成機率讓天氣好轉，所以要狂點。偶爾會跑出小白兔，燒到牠天氣會變差。</p>
     </div>
     <section class="forecast" aria-live="polite">
       <span class="label">今日天氣</span>
       <span class="weather" id="weather">大雨</span>
-      <span class="meta">降雨機率 <b id="pop">90%</b>・已燒 <b id="count">0</b> 隻</span>
+      <span class="meta">降雨機率 <b id="pop">90%</b>・已燒 <b id="count">0</b> 隻<span id="rabbit-meta" hidden>・誤燒 <b id="rabbits">0</b> 隻兔子</span></span>
       <div class="controls">
         <button class="reset" id="sound" type="button" aria-pressed="true">音效：開</button>
         <button class="reset" id="reset" type="button">重新開始</button>
@@ -382,6 +399,12 @@ body { margin: 0; }
   const LUCK = 0.2;           // chance that one turtle improves the weather
   let count = 0;              // turtles burned
   let luck = 0;               // throws that actually improved the weather
+  let rabbits = 0;            // rabbits burned by mistake
+  const RABBIT = 0.15;        // chance the next animal is a rabbit
+  let kind = 'turtle', lockUntil = 0, rabbitTimer = 0;
+  const elRabbits = document.getElementById('rabbits');
+  const elRabbitMeta = document.getElementById('rabbit-meta');
+  const lightning = document.getElementById('lightning');
   let clearTarget = 0, clearShown = 0;
   let lastSay = 0;
 
@@ -458,7 +481,43 @@ body { margin: 0; }
       </g>
     </svg>`;
   }
-  turtleBtn.innerHTML = turtleSVG();
+  // ---------- rabbit (the one you must not burn) ----------
+  function rabbitSVG() {
+    const edge = 'stroke="rgba(110,100,86,0.5)" stroke-width="0.8"';
+    const body = 'M64 113 C48 112 42 98 46 84 C50 68 66 56 88 54 C108 52 124 58 132 70 C138 80 138 98 130 108 C126 112 120 113 112 113 Z';
+    const head = 'M128 57 C126 44 134 34 148 33 C160 32 170 40 172 50 C174 58 170 66 160 68 C150 70 136 68 130 62 Z';
+    const foot = 'M58 113 C60 108 72 107 92 108 C104 108 111 110 111 113 Z';
+    const paw = 'M120 90 C122 99 122 106 124 110 C125 113 129 113 134 113 C138 113 139 111 137 109 C134 106 132 99 132 90 Z';
+    return `<svg viewBox="0 0 214 122" aria-hidden="true">
+      <g class="t-shadow"><ellipse cx="104" cy="114" rx="68" ry="5.5" fill="url(#t-shadow)"/></g>
+      <g transform="rotate(-28 134 40)">
+        <ellipse cx="134" cy="21" rx="6.5" ry="19" fill="url(#r-fur-far)" ${edge}/>
+        <ellipse cx="134" cy="23" rx="3" ry="13" fill="url(#r-ear-in)" opacity="0.7"/>
+      </g>
+      <circle cx="50" cy="88" r="9" fill="url(#r-fur)" ${edge}/>
+      <path d="${body}" fill="url(#r-fur)" ${edge}/>
+      <path d="${body}" fill="url(#r-shade)"/>
+      <path d="M56 106 C50 90 60 72 80 69 C96 67 106 79 105 95" stroke="rgba(130,120,104,0.38)" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+      <path d="${foot}" fill="url(#r-fur)" ${edge}/>
+      <path d="${paw}" fill="url(#r-fur)" ${edge}/>
+      <path d="M128 112.5 v-3 M132 112.5 v-3" stroke="rgba(130,120,104,0.45)" stroke-width="0.6"/>
+      <path d="${head}" fill="url(#r-fur)" ${edge}/>
+      <ellipse cx="152" cy="59" rx="12" ry="6" fill="rgba(150,138,120,0.16)"/>
+      <g transform="rotate(-8 146 40)">
+        <ellipse cx="146" cy="21" rx="7.5" ry="20" fill="url(#r-fur)" ${edge}/>
+        <ellipse cx="146" cy="23" rx="3.6" ry="14.5" fill="url(#r-ear-in)"/>
+      </g>
+      <ellipse cx="156" cy="46" rx="4.7" ry="4.9" fill="rgba(140,110,100,0.25)"/>
+      <ellipse cx="156" cy="46" rx="3.6" ry="3.8" fill="#1b1210"/>
+      <circle cx="157.3" cy="44.6" r="1.1" fill="rgba(255,255,255,0.9)"/>
+      <path d="M170.2 51.6 q2.2 1 1.8 3.2 q-2.2 0.3 -3.2 -1.7 z" fill="#d9958e"/>
+      <path d="M171 56.5 q-1.4 3 -4 3.4" stroke="rgba(120,90,80,0.5)" stroke-width="0.7" fill="none"/>
+      <path d="M167 57 l17 -4 M167 58.5 l18 1 M166 60 l15 5" stroke="rgba(90,80,70,0.35)" stroke-width="0.4"/>
+    </svg>`;
+  }
+  const TURTLE_SVG = turtleSVG();
+  const RABBIT_SVG = rabbitSVG();
+  turtleBtn.innerHTML = TURTLE_SVG;
 
   // ---------- landscape ----------
   function ridge(base, amp, waves) {
@@ -502,7 +561,8 @@ body { margin: 0; }
 
   // ---------- state ----------
   const SAYS = ['滋——', '滋滋', '嗶啵', '焦了', '好燙'];
-  const INTRO = '點下面的烏龜，把牠丟進太陽。每隻只有兩成機率讓天氣好轉，所以要狂點。';
+  const INTRO = '點下面的烏龜，把牠丟進太陽。每隻只有兩成機率讓天氣好轉，所以要狂點。偶爾會跑出小白兔，燒到牠天氣會變差。';
+  const HINT = '狂點烏龜，每隻兩成機率讓天氣好轉';
   function weatherFor(l) {
     if (l >= 18) return '大晴天，曬到發燙';
     if (l >= FULL) return '大晴天';
@@ -516,6 +576,7 @@ body { margin: 0; }
     if (l >= 24) return '太陽吃飽了。烏龜們辛苦了，明天出門記得擦防曬。';
     if (l >= 18) return '夠了夠了，再燒下去要中暑了。';
     if (l >= FULL) return `祈晴成功，燒了 ${c} 隻才放晴。明天會是好天氣。`;
+    if (rabbits >= 3) return '小白兔是無辜的，別再燒了。';
     if (c >= 10 && l === 0) return '老天爺還沒收到，繼續燒。';
     if (l >= 3) return '雲開始散了，繼續狂點。';
     return INTRO;
@@ -529,7 +590,15 @@ body { margin: 0; }
     const line = lineFor(count, luck);
     elLine.textContent = line;
     elLine.classList.toggle('status', line !== INTRO);
-    hint.classList.toggle('off', count >= 3);
+    elRabbits.textContent = rabbits;
+    elRabbitMeta.hidden = rabbits === 0;
+    renderHint();
+  }
+  function renderHint() {
+    const r = kind === 'rabbit';
+    hint.textContent = r ? '別點小白兔，燒到天氣會變差' : HINT;
+    hint.classList.toggle('warn', r);
+    hint.classList.toggle('off', !r && count >= 3);
   }
 
   function sunCenter() {
@@ -642,6 +711,14 @@ body { margin: 0; }
     });
   }
 
+  function sThunder() {
+    if (!audio()) return;
+    const t = ac.currentTime + 0.12;
+    noiseThrough('bandpass', 1300, 0.8, t, 0.3, 0.5, 0.004);       // crack
+    noiseThrough('lowpass', 170, 0.7, t + 0.05, 2.4, 0.9, 0.08);    // rumble
+    noiseThrough('lowpass', 90, 0.7, t + 0.4, 2.8, 0.7, 0.35);      // roll
+  }
+
   function setRain(gloom) {
     if (!rainGain) return;
     const level = Math.round(Math.pow(gloom, 1.3) * 100) / 100;
@@ -664,7 +741,44 @@ body { margin: 0; }
   renderSound();
 
   // ---------- throwing ----------
+  const popIn = svg => svg.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'ease-out' });
+  function show(next) {
+    kind = next;
+    turtleBtn.innerHTML = next === 'rabbit' ? RABBIT_SVG : TURTLE_SVG;
+    turtleBtn.setAttribute('aria-label', next === 'rabbit' ? '把小白兔丟進太陽（天氣會變差）' : '把烏龜丟進太陽');
+    renderHint();
+  }
+  function spawnNext() {
+    clearTimeout(rabbitTimer);
+    const next = Math.random() < RABBIT ? 'rabbit' : 'turtle';
+    show(next);
+    const svg = turtleBtn.querySelector('svg');
+    if (next === 'rabbit') {
+      lockUntil = performance.now() + 350;   // a moment to notice it
+      if (!reduced) svg.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'translateY(-16px)', offset: 0.55 }, { opacity: 1, transform: 'none' }], { duration: 350, easing: 'ease-out' });
+      rabbitTimer = setTimeout(rabbitLeaves, 1400);
+    } else if (!reduced) {
+      popIn(svg);
+    }
+  }
+  function rabbitLeaves() {
+    if (kind !== 'rabbit') return;
+    lockUntil = performance.now() + 500;
+    const done = () => {
+      show('turtle');
+      lockUntil = 0;
+      if (!reduced) popIn(turtleBtn.querySelector('svg'));
+    };
+    if (reduced) return done();
+    turtleBtn.querySelector('svg').animate(
+      [{ transform: 'none', opacity: 1 }, { transform: 'translate(60px, -18px)', opacity: 0.8, offset: 0.45 }, { transform: 'translate(130px, 0)', opacity: 0 }],
+      { duration: 450, easing: 'ease-in' }
+    ).onfinish = done;
+  }
+
   function throwTurtle() {
+    if (performance.now() < lockUntil) return;
+    const thrown = kind;
     const src = turtleBtn.querySelector('svg');
     const box = src.getBoundingClientRect();
     const w = box.width, h = box.height;
@@ -675,8 +789,8 @@ body { margin: 0; }
     flyer.style.height = h + 'px';
     document.body.appendChild(flyer);
 
-    // a fresh tortoise takes its place
-    if (!reduced) src.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'ease-out' });
+    // something new takes its place: usually a tortoise, sometimes a rabbit
+    spawnNext();
 
     const x0 = box.left + w / 2, y0 = box.top + h / 2;
     const dur = reduced ? 300 : 760 + Math.random() * 160;
@@ -698,31 +812,48 @@ body { margin: 0; }
       flyer.style.transform = `translate(${x - w / 2}px, ${y - h / 2}px) rotate(${spin * e}deg) scale(${scale})`;
       flyer.style.filter = `brightness(${1 - 0.8 * char}) sepia(${0.6 * char}) saturate(${1 + char})`;
       if (t < 1) requestAnimationFrame(step);
-      else { flyer.remove(); impact(tx, ty, s.r); }
+      else { flyer.remove(); impact(thrown, tx, ty, s.r); }
     }
     requestAnimationFrame(step);
   }
 
-  function impact(x, y, r) {
-    count++;
-    const lucky = Math.random() < LUCK;
-    if (lucky) luck++;
+  function impact(thrown, x, y, r) {
+    let mood = '';
+    if (thrown === 'rabbit') {
+      rabbits++;
+      luck = Math.max(0, luck - 2);
+      mood = 'bad';
+    } else {
+      count++;
+      if (Math.random() < LUCK) { luck++; mood = 'good'; }
+    }
     update();
     sBurn();
-    if (lucky) { if (luck === FULL) sChime(); else sLucky(); }
+    if (mood === 'good') { if (luck === FULL) sChime(); else sLucky(); }
+    if (mood === 'bad') { sThunder(); strike(); }
     if (!reduced) {
-      flash.animate([{ opacity: 0 }, { opacity: lucky ? 1 : 0.7, offset: 0.2 }, { opacity: 0 }], { duration: lucky ? 700 : 480, easing: 'ease-out' });
-      sunDisc.animate([{ scale: 1 }, { scale: lucky ? 1.08 : 1.04 }, { scale: 1 }], { duration: 420, easing: 'ease-out' });
+      flash.animate([{ opacity: 0 }, { opacity: mood === 'good' ? 1 : 0.7, offset: 0.2 }, { opacity: 0 }], { duration: mood === 'good' ? 700 : 480, easing: 'ease-out' });
+      sunDisc.animate([{ scale: 1 }, { scale: mood === 'good' ? 1.08 : 1.04 }, { scale: 1 }], { duration: 420, easing: 'ease-out' });
     }
     burst(x, y, r);
     const now = performance.now();
-    if (lucky || now - lastSay > 320) { lastSay = now; say(x, sunCenter().y - r * 1.12, lucky); }
+    if (mood || now - lastSay > 320) { lastSay = now; say(x, sunCenter().y - r * 1.12, mood); }
   }
 
-  function say(x, y, lucky) {
+  function strike() {
+    if (reduced) return;
+    lightning.animate(
+      [{ opacity: 0 }, { opacity: 0.75, offset: 0.06 }, { opacity: 0.1, offset: 0.16 }, { opacity: 0.55, offset: 0.24 }, { opacity: 0 }],
+      { duration: 750, easing: 'ease-out' }
+    );
+  }
+
+  function say(x, y, mood) {
     const el = document.createElement('div');
-    el.className = lucky ? 'say good' : 'say';
-    el.textContent = lucky ? (luck === FULL ? '放晴了' : '天氣好轉') : SAYS[Math.floor(Math.random() * SAYS.length)];
+    el.className = mood ? 'say ' + mood : 'say';
+    el.textContent = mood === 'good' ? (luck === FULL ? '放晴了' : '天氣好轉')
+      : mood === 'bad' ? '天氣變差'
+      : SAYS[Math.floor(Math.random() * SAYS.length)];
     el.style.left = x + 'px';
     el.style.top = y + 'px';
     el.addEventListener('animationend', () => el.remove());
@@ -837,16 +968,17 @@ body { margin: 0; }
   requestAnimationFrame(frame);
 
   turtleBtn.addEventListener('click', throwTurtle);
-  document.getElementById('reset').addEventListener('click', () => { audio(); count = 0; luck = 0; update(); });
+  document.getElementById('reset').addEventListener('click', () => { audio(); count = 0; luck = 0; rabbits = 0; update(); });
 
   function start(data) {
     count = (data && data.count) | 0;
     luck = (data && data.luck) | 0;
+    rabbits = (data && data.rabbits) | 0;
     clearShown = Math.min(luck / FULL, 1);
     update();
   }
   const hot = window.claude && window.claude.hot;
-  if (hot && hot.snapshot) hot.snapshot(() => ({ count, luck }));
+  if (hot && hot.snapshot) hot.snapshot(() => ({ count, luck, rabbits }));
   if (hot && hot.ready) hot.ready(start); else start(hot && hot.data ? hot.data : {});
 })();
 </script>
