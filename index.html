@@ -3,6 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="狂點烏龜丟進太陽，祈求好天氣。小心別燒到小白兔，比比看誰用最少隻烏龜放晴。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://hankli91.github.io/turtle-sun/">
+<meta property="og:title" content="燒烏龜，求好天氣">
+<meta property="og:description" content="狂點烏龜丟進太陽，祈求好天氣。小心別燒到小白兔，比比看誰用最少隻烏龜放晴。">
+<meta property="og:image" content="https://hankli91.github.io/turtle-sun/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%23f2a33a'/%3E%3Ccircle cx='16' cy='16' r='9' fill='%23ffd76a'/%3E%3C/svg%3E">
 <title>燒烏龜祈晴</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -252,7 +262,7 @@ h1 {
 .reset:hover { color: var(--text); }
 .reset:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; border-radius: 4px; }
 
-/* Nickname gate */
+/* Overlays: nickname gate, result card and leaderboard share .gate and .gate-card */
 .gate {
   position: absolute; inset: 0; z-index: 20;
   display: grid; place-items: center;
@@ -286,6 +296,33 @@ h1 {
 .gate-card button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .gate-error { margin: 0; font-size: 13px; color: var(--error); }
 .gate-note { margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-dim); }
+.gate-card .secondary { background: transparent; border: 1px solid var(--glass-line); color: var(--text); font-weight: 500; }
+.gate-card .quiet {
+  padding: 4px; background: none; color: var(--text-dim);
+  font-size: 14px; font-weight: 400;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.gate-stat { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; text-align: center; }
+.stats div { display: grid; gap: 2px; padding: 10px 4px; border-radius: 10px; background: var(--field); }
+.stats b { font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stats span { font-size: 12px; color: var(--text-dim); }
+.result-rank { margin: 0; min-height: 1.5em; font-size: 15px; text-align: center; }
+.result-rank b { color: var(--btn); font-size: 18px; }
+.board-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
+.board-list li {
+  display: grid; grid-template-columns: 1.6em minmax(0, 1fr) auto auto;
+  gap: 10px; align-items: baseline;
+  padding: 7px 8px; border-radius: 8px;
+}
+.board-list li:nth-child(odd) { background: var(--field); }
+.board-list li.me { box-shadow: inset 0 0 0 1px var(--btn); }
+.board-list .rk { font-size: 13px; color: var(--text-dim); }
+.board-list .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-list .tt { font-weight: 700; }
+.board-list .sc { font-size: 13px; color: var(--text-dim); }
+.board-empty { margin: 0; font-size: 14px; color: var(--text-dim); }
+.gate-card .copy-field { font-size: 14px; padding: 8px 10px; }
 
 @media (max-width: 520px) {
   .hud { padding-block: 12px; gap: 8px; }
@@ -433,6 +470,7 @@ body { margin: 0; }
       <span class="meta">降雨機率 <b id="pop">90%</b>・已燒 <b id="count">0</b> 隻<span id="rabbit-meta" hidden>・誤燒 <b id="rabbits">0</b> 隻兔子</span></span>
       <div class="controls">
         <button class="reset" id="sound" type="button" aria-pressed="true">音效：開</button>
+        <button class="reset" id="board-open" type="button">排行榜</button>
         <button class="reset" id="reset" type="button">重新開始</button>
       </div>
     </section>
@@ -444,12 +482,41 @@ body { margin: 0; }
   <div class="gate" id="gate">
     <form class="gate-card" id="gate-form" novalidate>
       <h2>燒烏龜，求好天氣</h2>
+      <p class="gate-stat" id="gate-stat" hidden></p>
       <label for="nick">先說你是誰</label>
       <input id="nick" name="nick" type="text" maxlength="20" autocomplete="nickname" placeholder="暱稱" required>
       <p class="gate-error" id="gate-error" hidden>請輸入暱稱，最多 20 個字。</p>
       <button type="submit">開始燒烏龜</button>
-      <p class="gate-note">暱稱和遊玩紀錄會留給網站主人看。</p>
+      <p class="gate-note">暱稱和遊玩紀錄會留給網站主人看，放晴後暱稱會上排行榜。</p>
     </form>
+  </div>
+
+  <div class="gate" id="result" hidden>
+    <div class="gate-card" role="dialog" aria-labelledby="result-title">
+      <h2 id="result-title">放晴了！</h2>
+      <div class="stats">
+        <div><b id="r-turtles">0</b><span>隻烏龜</span></div>
+        <div><b id="r-seconds">0</b><span>秒</span></div>
+        <div><b id="r-rabbits">0</b><span>隻兔子誤燒</span></div>
+      </div>
+      <p class="result-rank" id="r-rank"></p>
+      <button type="button" id="share">分享給朋友</button>
+      <input class="copy-field" id="share-text" type="text" readonly hidden aria-label="分享文字">
+      <p class="gate-note" id="share-note" hidden></p>
+      <button type="button" class="secondary" id="again">再玩一次</button>
+      <button type="button" class="quiet" id="keep">繼續燒</button>
+    </div>
+  </div>
+
+  <div class="gate" id="board" hidden>
+    <div class="gate-card" role="dialog" aria-labelledby="board-title">
+      <h2 id="board-title">排行榜</h2>
+      <p class="gate-note">比誰用最少隻烏龜放晴，每人只算最好的一次。</p>
+      <ol class="board-list" id="board-list"></ol>
+      <p class="board-empty" id="board-empty" hidden>還沒有人放晴過，你來當第一個。</p>
+      <p class="gate-stat" id="board-stats">載入中…</p>
+      <button type="button" class="secondary" id="board-close">關閉</button>
+    </div>
   </div>
 </main>
 
@@ -483,6 +550,8 @@ body { margin: 0; }
   const lightning = document.getElementById('lightning');
   let clearTarget = 0, clearShown = 0;
   let lastSay = 0;
+  // one round runs from the first throw until "重新開始"; clearing it once shows the result card
+  let roundStart = 0, roundCleared = false, clearAt = 0, lastResult = null;
 
   // ---------- tortoise ----------
   // High dome, scutes laid out as real plates: vertebral row on top, costals on the flank, marginals along the rim.
@@ -748,10 +817,9 @@ body { margin: 0; }
 
   // ---------- state ----------
   const SAYS = ['滋——', '滋滋', '嗶啵', '焦了', '好燙'];
-  const INTRO = '點下面的烏龜，把牠丟進太陽。每隻只有兩成機率讓天氣好轉，所以要狂點。偶爾會跑出小白兔，燒到牠天氣會變差。';
+  const INTRO = '點下面的烏龜，把牠丟進太陽。每隻只有兩成機率讓天氣好轉，所以要狂點。偶爾會跑出小白兔，燒到牠天氣會倒退一半。';
   const HINT = '狂點烏龜，每隻兩成機率讓天氣好轉';
   function weatherFor(l) {
-    if (l >= 18) return '大晴天，曬到發燙';
     if (l >= FULL) return '大晴天';
     if (l >= 9) return '晴時多雲';
     if (l >= 6) return '多雲';
@@ -760,9 +828,8 @@ body { margin: 0; }
     return '大雨';
   }
   function lineFor(c, l) {
-    if (l >= 24) return '太陽吃飽了。烏龜們辛苦了，明天出門記得擦防曬。';
-    if (l >= 18) return '夠了夠了，再燒下去要中暑了。';
-    if (l >= FULL) return `祈晴成功，燒了 ${c} 隻才放晴。明天會是好天氣。`;
+    if (l >= FULL) return c >= clearAt + 60 ? '太陽吃飽了，烏龜們辛苦了。' : `祈晴成功，燒了 ${clearAt || c} 隻才放晴。`;
+    if (roundCleared) return '天氣又變差了，快把太陽燒回來。';
     if (rabbits >= 3) return '小白兔是無辜的，別再燒了。';
     if (c >= 10 && l === 0) return '老天爺還沒收到，繼續燒。';
     if (l >= 3) return '雲開始散了，繼續狂點。';
@@ -783,7 +850,7 @@ body { margin: 0; }
   }
   function renderHint() {
     const r = kind === 'rabbit';
-    hint.textContent = r ? '別點小白兔，燒到天氣會變差' : HINT;
+    hint.textContent = r ? '別點小白兔，燒到天氣會倒退一半' : HINT;
     hint.classList.toggle('warn', r);
     hint.classList.toggle('off', !r && count >= 3);
   }
@@ -932,6 +999,12 @@ body { margin: 0; }
   });
   renderSound();
 
+  // short taps on phones that support it (Android); follows the sound switch
+  function buzz(pattern) {
+    if (muted || !navigator.vibrate) return;
+    try { navigator.vibrate(pattern); } catch (e) {}
+  }
+
   // ---------- throwing ----------
   const popIn = el => el.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'ease-out' });
   const current = () => kind === 'rabbit' ? aRabbit : aTurtle;
@@ -973,6 +1046,8 @@ body { margin: 0; }
   function throwTurtle() {
     if (performance.now() < lockUntil) return;
     const thrown = kind;
+    if (!roundStart) roundStart = performance.now();
+    buzz(8);
     const box = current().getBoundingClientRect();
     const w = box.width, h = box.height;
     const flyer = document.createElement('div');
@@ -1015,16 +1090,22 @@ body { margin: 0; }
     let mood = '';
     if (thrown === 'rabbit') {
       rabbits++; totalRabbits++;
-      luck = Math.max(0, luck - 2);
+      // a burnt rabbit costs half of the progress, and never less than 3 steps
+      luck = Math.max(0, Math.min(luck - 3, Math.floor(luck / 2)));
       mood = 'bad';
+      buzz([40, 50, 140]);
     } else {
       count++; totalTurtles++;
-      if (Math.random() < LUCK) { luck++; mood = 'good'; }
+      // progress tops out at a clear sky, so nobody can bank extra against rabbits
+      if (luck < FULL && Math.random() < LUCK) { luck++; mood = 'good'; buzz(25); }
     }
+    const justCleared = luck >= FULL && !roundCleared;
+    if (justCleared) { roundCleared = true; clearAt = count; }
     update();
     queueSave();
     sBurn();
-    if (mood === 'good') { if (luck === FULL) sChime(); else sLucky(); }
+    if (mood === 'good') { if (justCleared) sChime(); else sLucky(); }
+    if (justCleared) cleared();
     if (mood === 'bad') { sThunder(); strike(); }
     if (!reduced) {
       flash.animate([{ opacity: 0 }, { opacity: mood === 'good' ? 1 : 0.7, offset: 0.2 }, { opacity: 0 }], { duration: mood === 'good' ? 700 : 480, easing: 'ease-out' });
@@ -1239,8 +1320,120 @@ body { margin: 0; }
     turtleBtn.focus({ preventScroll: true });
   });
 
+  function rpcJSON(fn, body) {
+    return rpc(fn, body).then(r => (r && r.ok) ? r.json() : null).catch(() => null);
+  }
+
+  // ---------- leaderboard + today's count ----------
+  const boardEl = document.getElementById('board');
+  const boardList = document.getElementById('board-list');
+  const boardEmpty = document.getElementById('board-empty');
+  const boardStats = document.getElementById('board-stats');
+  const gateStat = document.getElementById('gate-stat');
+  let board = null;
+  const fmt = n => Number(n || 0).toLocaleString('zh-TW');
+
+  function renderBoard() {
+    if (!board) { boardStats.textContent = '現在連不上排行榜，等一下再試。'; return; }
+    const top = board.top || [];
+    boardList.textContent = '';
+    top.forEach(row => {
+      const li = document.createElement('li');
+      if (row.me) li.className = 'me';
+      [['rk', row.rank], ['nm', row.nickname], ['tt', row.turtles + ' 隻'], ['sc', row.seconds + ' 秒']].forEach(([c, t]) => {
+        const s = document.createElement('span');
+        s.className = c;
+        s.textContent = t;
+        li.appendChild(s);
+      });
+      boardList.appendChild(li);
+    });
+    boardEmpty.hidden = top.length > 0;
+    let stats = `今天大家燒了 ${fmt(board.today_turtles)} 隻・總共 ${fmt(board.total_turtles)} 隻・${fmt(board.players)} 位玩家`;
+    if (board.mine && !top.some(r => r.me)) stats = `你目前第 ${board.mine.rank} 名（${board.mine.turtles} 隻）。` + stats;
+    boardStats.textContent = stats;
+    gateStat.textContent = board.today_turtles > 0
+      ? `今天大家已經燒了 ${fmt(board.today_turtles)} 隻烏龜`
+      : '今天還沒有人燒烏龜，你來開張。';
+    gateStat.hidden = false;
+  }
+  function loadBoard() {
+    return rpcJSON('get_turtle_board', { p_visitor: visitorId }).then(b => { if (b) board = b; renderBoard(); return b; });
+  }
+  document.getElementById('board-open').addEventListener('click', () => {
+    boardStats.textContent = board ? boardStats.textContent : '載入中…';
+    boardEl.hidden = false;
+    loadBoard();
+  });
+  document.getElementById('board-close').addEventListener('click', () => { boardEl.hidden = true; });
+  loadBoard();
+
+  // ---------- result card when the sky clears ----------
+  const resultEl = document.getElementById('result');
+  const rRank = document.getElementById('r-rank');
+  const shareText = document.getElementById('share-text');
+  const shareNote = document.getElementById('share-note');
+  const SITE = 'https://hankli91.github.io/turtle-sun/';
+
+  function cleared() {
+    const secs = Math.max(1, (performance.now() - (roundStart || performance.now())) / 1000);
+    lastResult = { turtles: clearAt, rabbits, seconds: Math.round(secs * 10) / 10 };
+    document.getElementById('r-turtles').textContent = lastResult.turtles;
+    document.getElementById('r-seconds').textContent = Math.round(lastResult.seconds);
+    document.getElementById('r-rabbits').textContent = lastResult.rabbits;
+    rRank.textContent = visitId ? '排名計算中…' : '';
+    shareText.hidden = true;
+    shareNote.hidden = true;
+    setTimeout(() => { resultEl.hidden = false; }, reduced ? 0 : 1100);
+    if (!visitId) return;
+    rpcJSON('submit_turtle_clear', { p_visit: visitId, p_turtles: lastResult.turtles, p_rabbits: lastResult.rabbits, p_seconds: lastResult.seconds })
+      .then(res => {
+        if (res && res.rank) {
+          rRank.innerHTML = `排行榜第 <b>${Number(res.rank)}</b> 名` + (res.best ? '，是你的最佳紀錄' : '，你之前的紀錄更好');
+        } else {
+          rRank.textContent = '這次沒有記到排行榜。';
+        }
+        loadBoard();
+      });
+  }
+
+  document.getElementById('share').addEventListener('click', async () => {
+    const r = lastResult || { turtles: count, rabbits };
+    const text = `我燒了 ${r.turtles} 隻烏龜才求到好天氣${r.rabbits ? `，還誤燒了 ${r.rabbits} 隻小白兔` : ''}。換你試試！`;
+    if (navigator.share) {
+      try { await navigator.share({ title: '燒烏龜，求好天氣', text, url: SITE }); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    const full = text + ' ' + SITE;
+    try {
+      await navigator.clipboard.writeText(full);
+      shareNote.textContent = '已複製，貼到 LINE 給朋友吧。';
+      shareNote.hidden = false;
+      return;
+    } catch (e) {}
+    shareText.value = full;
+    shareText.hidden = false;
+    shareText.select();
+    shareNote.textContent = '複製這段文字貼給朋友。';
+    shareNote.hidden = false;
+  });
+
+  function resetRound() {
+    count = 0; luck = 0; rabbits = 0;
+    roundStart = 0; roundCleared = false; clearAt = 0;
+    update();
+    queueSave();
+  }
+  document.getElementById('again').addEventListener('click', () => { resultEl.hidden = true; resetRound(); });
+  document.getElementById('keep').addEventListener('click', () => { resultEl.hidden = true; });
+  addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    boardEl.hidden = true;
+    resultEl.hidden = true;
+  });
+
   turtleBtn.addEventListener('click', throwTurtle);
-  document.getElementById('reset').addEventListener('click', () => { audio(); count = 0; luck = 0; rabbits = 0; update(); queueSave(); });
+  document.getElementById('reset').addEventListener('click', () => { audio(); resetRound(); });
 
   function start(data) {
     count = (data && data.count) | 0;
